@@ -29,7 +29,7 @@ A single script that sets up [FoundryVTT](https://foundryvtt.com) in an isolated
 ### 1. Download the setup script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/BrewerSeth/FoundryVTT-Bazzite/main/scripts/setup-foundryvtt.sh -o setup-foundryvtt.sh
+curl -fsSL https://raw.githubusercontent.com/BrewerSeth/FoundryVTT-Bazzite/master/scripts/setup-foundryvtt.sh -o setup-foundryvtt.sh
 chmod +x setup-foundryvtt.sh
 ```
 
