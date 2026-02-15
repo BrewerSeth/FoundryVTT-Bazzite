@@ -1,0 +1,22 @@
+# FoundryVTT Systemd User Service Template
+# 
+# This file is a template that will be customized during setup.
+# Placeholders ({{VAR}}) are replaced with actual values.
+#
+# Location when installed: ~/.config/systemd/user/foundryvtt.service
+#
+
+[Unit]
+Description=FoundryVTT Server in Distrobox
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/distrobox enter {{CONTAINER_NAME}} -- node {{INSTALL_PATH}}/main.js --dataPath={{DATA_PATH}} --port={{PORT}}
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target
