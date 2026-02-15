@@ -9,7 +9,7 @@
 1. Which Ubuntu LTS version should we use for the container?
 2. How do we reliably detect if the system is Bazzite?
 3. How do we determine the required Node.js version for FoundryVTT?
-4. How do we configure auto-start using Quadlet/systemd?
+4. How do we configure auto-start using systemd?
 
 ---
 
@@ -19,7 +19,7 @@
 
 ### Rationale
 
-Both Ubuntu 22.04 and 24.04 work equally well with NodeSource (required for Node.js installation), but 22.04 is preferred:
+Both Ubuntu 22.04 and 24.04 work equally well with NodeSource (required for Node.js installation):
 
 | Factor | Ubuntu 22.04 (Jammy) | Ubuntu 24.04 (Noble) |
 |--------|---------------------|---------------------|
@@ -28,14 +28,14 @@ Both Ubuntu 22.04 and 24.04 work equally well with NodeSource (required for Node
 | **LTS Support Until** | April 2027 | April 2029 |
 | **Container Stability** | Proven, widely tested | Newer, less battle-tested |
 
-**Why Noble over Jammy:**
+**Why Noble (24.04) was chosen:**
 - Longer LTS support (April 2029 vs April 2027)
 - Both require NodeSource for Node.js anyway
 - Modern base for future compatibility
 
 ### Alternatives Considered
 
-- **Ubuntu 24.04**: Rejected due to less testing; no significant benefits since NodeSource is required anyway
+- **Ubuntu 22.04**: Viable but shorter support window (April 2027)
 - **Fedora**: Rejected per constitution—Ubuntu provides clear visual distinction from host (apt vs dnf)
 - **Alpine**: Rejected due to musl libc compatibility concerns with Node.js native modules
 
@@ -175,7 +175,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/distrobox enter foundryvtt -- node %h/foundryvtt/resources/app/main.js --dataPath=%h/FoundryVTT --port=30000
+ExecStart=/usr/bin/distrobox enter foundryvtt -- node %h/.foundryvtt/main.js --dataPath=%h/FoundryVTT-Data --port=30000
 Restart=on-failure
 RestartSec=10
 TimeoutStartSec=300
@@ -183,6 +183,11 @@ TimeoutStartSec=300
 [Install]
 WantedBy=default.target
 ```
+
+**Note on paths:**
+- Install path: `~/.foundryvtt` (hidden directory for application files)
+- Data path: `~/FoundryVTT-Data` (visible directory for user data)
+- FoundryVTT V13+ entry point: `main.js` at root (NOT `resources/app/main.js`)
 
 **Enable commands:**
 ```bash
@@ -210,10 +215,12 @@ loginctl enable-linger "$USER"
 
 | Question | Decision | Key Reason |
 |----------|----------|------------|
-| Ubuntu version | 22.04 LTS (Jammy) | Proven stability, NodeSource support |
+| Ubuntu version | 24.04 LTS (Noble) | Longer support (2029), NodeSource compatible |
 | Bazzite detection | `ID=bazzite` in os-release | Unique, reliable, standard |
 | Node.js version | Extract from URL, use mapping | Deterministic before download |
 | Auto-start | systemd user service | Only option that works with Distrobox |
+| Install path | `~/.foundryvtt` | Hidden app directory, avoids confusion |
+| Data path | `~/FoundryVTT-Data` | Clearly labeled user data |
 
 ---
 

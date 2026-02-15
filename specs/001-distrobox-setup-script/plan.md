@@ -5,14 +5,14 @@
 
 ## Summary
 
-Create a single Bash script that enables Bazzite users to set up FoundryVTT in an isolated Distrobox container. The script guides users through: (1) creating an Ubuntu LTS container, (2) downloading FoundryVTT via user-provided Timed URL, (3) installing the correct Node.js version, (4) configuring data storage location, and (5) optionally enabling auto-start via Quadlet/systemd.
+Create a single Bash script that enables Bazzite users to set up FoundryVTT in an isolated Distrobox container. The script guides users through: (1) creating an Ubuntu LTS container, (2) downloading FoundryVTT via user-provided Timed URL, (3) installing the correct Node.js version, (4) configuring data storage location, and (5) optionally enabling auto-start via systemd user service.
 
 ## Technical Context
 
 **Language/Version**: Bash (POSIX-compatible where practical, per constitution)
 **Primary Dependencies**: Distrobox, Podman (pre-installed on Bazzite), curl/wget
-**Container Base**: Ubuntu 22.04 LTS (Jammy)
-**Storage**: File-based config (`~/.config/foundryvtt-bazzite/`), user data directory (default `~/FoundryVTT`)
+**Container Base**: Ubuntu 24.04 LTS (Noble)
+**Storage**: File-based config (`~/.config/foundryvtt-bazzite/`), app install (`~/.foundryvtt`), user data (`~/FoundryVTT-Data`)
 **Testing**: Manual testing on Bazzite (ShellCheck for static analysis)
 **Target Platform**: Bazzite (Fedora-based immutable desktop, including Steam Deck)
 **Project Type**: Single script (CLI tool)
@@ -21,10 +21,11 @@ Create a single Bash script that enables Bazzite users to set up FoundryVTT in a
 **Scale/Scope**: Single-user setup script, supports one FoundryVTT instance per run
 
 **Research Completed** (see [research.md](./research.md)):
-- Ubuntu LTS: **22.04 (Jammy)** - proven stability, NodeSource support for Node.js installation
+- Ubuntu LTS: **24.04 (Noble)** - longer support (2029), NodeSource compatible for Node.js installation
 - Bazzite detection: Check `ID=bazzite` in `/etc/os-release` - unique, reliable, standard
 - Node.js version: Extract FoundryVTT version from Timed URL, use hardcoded mapping (V13+: Node 22.x)
 - Auto-start: **systemd user service** (NOT Quadlet) - Quadlet incompatible with Distrobox containers
+- Path convention: `~/.foundryvtt` (app, hidden) and `~/FoundryVTT-Data` (user data, visible)
 
 ## Constitution Check
 
@@ -57,14 +58,15 @@ Create a single Bash script that enables Bazzite users to set up FoundryVTT in a
 | Principle | Post-Design Status | Notes |
 |-----------|-------------------|-------|
 | **I. Documentation-First** | ✅ SATISFIED | quickstart.md created, script header spec'd in data-model |
-| **II. Reproducibility** | ✅ SATISFIED | Ubuntu 22.04 pinned, Node.js version mapping defined, config schema documented |
+| **II. Reproducibility** | ✅ SATISFIED | Ubuntu 24.04 pinned, Node.js version mapping defined, config schema documented |
 | **III. Simplicity** | ✅ SATISFIED | Single script, no external deps beyond pre-installed tools |
 | **IV. Immutable Infrastructure** | ✅ SATISFIED | systemd user service (research found Quadlet incompatible with Distrobox) |
-| **V. Script Quality** | ✅ PLANNED | Will enforce during implementation |
+| **V. Script Quality** | ✅ SATISFIED | ShellCheck compliant, `set -euo pipefail`, comprehensive error handling |
 
 **Design Changes from Research**:
 - Changed from Quadlet to systemd user service (Quadlet doesn't support Distrobox)
-- Selected Ubuntu 22.04 over 24.04 (proven stability)
+- Selected Ubuntu 24.04 over 22.04 (longer support window until 2029)
+- Chose distinct paths: `~/.foundryvtt` (hidden app) vs `~/FoundryVTT-Data` (visible data) to avoid user confusion
 
 ## Project Structure
 

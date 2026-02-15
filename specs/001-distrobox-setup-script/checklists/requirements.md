@@ -32,5 +32,25 @@
 ## Notes
 
 - All items pass validation
-- Spec is ready for `/speckit.plan` phase
+- Feature implementation complete and tested on Bazzite
 - Assumptions documented regarding FoundryVTT licensing (script does not handle license acquisition)
+
+## Implementation Status
+
+**Status**: Complete (2026-02-15)
+
+**Files created**:
+- `scripts/setup-foundryvtt.sh` - Main setup script (1200+ lines)
+- `templates/systemd/foundryvtt.service` - Systemd service template
+- `docs/troubleshooting.md` - Troubleshooting guide
+
+**Testing performed**:
+- Fresh install on Bazzite
+- Reconfigure flow (change data path, toggle auto-start)
+- Reinstall flow (remove container, reinstall)
+- Broken installation repair (config exists, container missing)
+- Data migration (move/copy between paths)
+
+**Post-implementation changes documented in**:
+- spec.md: Added Implementation Notes section
+- tasks.md: Added Post-Implementation Additions section

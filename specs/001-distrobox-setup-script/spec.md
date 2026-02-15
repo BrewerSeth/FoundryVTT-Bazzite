@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-distrobox-setup-script`  
 **Created**: 2026-02-15  
-**Status**: Draft  
+**Status**: Complete  
 **Input**: User description: "A user can download a script from this github repo. The script is for a Bazzite system. This will fire up a new instance of DistroBox and prepare it as the host for FoundryVTT. The script will help the user decide where the data will be stored. The script will help the user decide if they want FoundryVTT to run when the computer starts."
 
 ## User Scenarios & Testing *(mandatory)*
@@ -47,7 +47,7 @@ During setup, the user is asked where they want to store their FoundryVTT data (
 
 ### User Story 3 - Configure Auto-Start on Boot (Priority: P3)
 
-The user is asked whether they want FoundryVTT to start automatically when they turn on their computer. If yes, the script configures the necessary systemd/Quadlet services. If no, the user can start FoundryVTT manually when needed.
+The user is asked whether they want FoundryVTT to start automatically when they turn on their computer. If yes, the script configures a systemd user service with lingering enabled. If no, the user can start FoundryVTT manually when needed.
 
 **Why this priority**: Auto-start is a convenience feature. Users can always start FoundryVTT manually, so this enhances the experience but isn't essential for basic functionality.
 
@@ -105,7 +105,7 @@ The user is asked whether they want FoundryVTT to start automatically when they 
 
 - **FR-006**: The script MUST prompt the user to enable or disable auto-start on system boot.
 
-- **FR-007**: The script MUST create appropriate systemd/Quadlet service files when auto-start is enabled.
+- **FR-007**: The script MUST create a systemd user service file when auto-start is enabled, and enable user lingering for boot-time startup.
 
 - **FR-008**: The script MUST provide clear progress feedback during each step of the setup process.
 
@@ -133,7 +133,7 @@ The user is asked whether they want FoundryVTT to start automatically when they 
 
 - **Data Directory**: User-specified location for persistent FoundryVTT data (worlds, modules, assets, configuration). Mounted into the container from the host system.
 
-- **Systemd Service**: Optional service unit that manages FoundryVTT auto-start. Created via Quadlet for Bazzite compatibility.
+- **Systemd User Service**: Optional service unit that manages FoundryVTT auto-start. Installed to `~/.config/systemd/user/foundryvtt.service`. Uses `loginctl enable-linger` for boot-time startup without login. Note: Quadlet is NOT used because it's incompatible with Distrobox containers.
 
 - **User Configuration**: Stored preferences from setup (data path, auto-start preference) that allow the script to be re-run or updated.
 
@@ -167,5 +167,41 @@ The user is asked whether they want FoundryVTT to start automatically when they 
 - The target system has sufficient disk space for the Distrobox container and FoundryVTT data.
 - Users have basic familiarity with running commands in a terminal (copy-paste a single command).
 - Distrobox is pre-installed on Bazzite (this is standard for Bazzite systems).
-- The default data storage location will be `~/FoundryVTT` unless the user specifies otherwise.
+- The default data storage location will be `~/FoundryVTT-Data` unless the user specifies otherwise.
+- The default install location will be `~/.foundryvtt` (hidden directory for application files).
 - The official FoundryVTT installation guide is available at: https://foundryvtt.com/article/installation/
+
+## Implementation Notes
+
+### Path Conventions
+
+The script uses clearly distinguished paths to avoid user confusion:
+
+- **Install Path**: `~/.foundryvtt` - Hidden directory containing FoundryVTT application files (main.js, etc.). Can be re-downloaded anytime with a new Timed URL.
+- **Data Path**: `~/FoundryVTT-Data` - Visible directory containing user data (worlds, modules, assets). This is precious user content that should be backed up.
+
+This follows the FoundryVTT documentation recommendation of separate `foundryvtt` (app) and `foundrydata` (user data) directories, with improvements for clarity.
+
+### Broken Installation Detection
+
+The script detects and handles "broken" installations where:
+- The config file exists (`~/.config/foundryvtt-bazzite/config`)
+- But the Distrobox container is missing (e.g., user ran `distrobox rm`)
+
+In this case, the script offers:
+1. **Repair** - Recreate container without new Timed URL (if application files exist)
+2. **Fresh install** - Start over completely (requires new Timed URL)
+3. **Exit** - Do nothing
+
+### Auto-Start Implementation
+
+Auto-start uses systemd user services (NOT Quadlet) because:
+- Quadlet is designed for raw Podman containers, not Distrobox
+- Distrobox containers require special initialization that Quadlet cannot handle
+- User services with `loginctl enable-linger` work correctly for boot-time startup
+
+### Safe Path Validation
+
+On Bazzite (immutable system), the script warns users if they choose data paths outside safe locations:
+- Safe: `$HOME/*`, `/var/*`, `/run/media/*`, `/mnt/*`
+- Unsafe: `/opt`, `/usr`, etc. (may be lost on system updates)

@@ -21,8 +21,8 @@ Stores user preferences from setup for idempotent re-runs and future scripts.
 |-------|------|----------|---------|-------------|
 | `FOUNDRY_VERSION` | string | Yes | - | FoundryVTT version (e.g., "13.351") |
 | `NODE_VERSION` | string | Yes | - | Node.js major version used (e.g., "22") |
-| `DATA_PATH` | path | Yes | `~/FoundryVTT` | User data directory |
-| `INSTALL_PATH` | path | Yes | `~/foundryvtt` | FoundryVTT application location |
+| `DATA_PATH` | path | Yes | `~/FoundryVTT-Data` | User data directory (worlds, modules, etc.) |
+| `INSTALL_PATH` | path | Yes | `~/.foundryvtt` | FoundryVTT application location (hidden) |
 | `CONTAINER_NAME` | string | Yes | `foundryvtt` | Distrobox container name |
 | `PORT` | integer | Yes | `30000` | FoundryVTT server port |
 | `AUTO_START` | boolean | Yes | `false` | Whether auto-start is enabled |
@@ -38,8 +38,8 @@ Stores user preferences from setup for idempotent re-runs and future scripts.
 
 FOUNDRY_VERSION="13.351"
 NODE_VERSION="22"
-DATA_PATH="/home/user/FoundryVTT"
-INSTALL_PATH="/home/user/foundryvtt"
+DATA_PATH="/home/user/FoundryVTT-Data"
+INSTALL_PATH="/home/user/.foundryvtt"
 CONTAINER_NAME="foundryvtt"
 PORT="30000"
 AUTO_START="true"
@@ -50,11 +50,11 @@ SETUP_VERSION="1.0.0"
 ### 2. Distrobox Container
 
 **Name**: `foundryvtt` (configurable)  
-**Base Image**: `ubuntu:22.04`
+**Base Image**: `ubuntu:24.04`
 
 | Property | Value | Notes |
 |----------|-------|-------|
-| Image | `ubuntu:22.04` | Ubuntu LTS for apt/dnf distinction |
+| Image | `ubuntu:24.04` | Ubuntu LTS (Noble) - support until 2029 |
 | Home mount | Automatic | Distrobox shares host home directory |
 | Packages | `nodejs`, `curl`, `unzip` | Installed via apt after NodeSource setup |
 
@@ -82,12 +82,12 @@ Created only when `AUTO_START=true`.
 
 ### 4. FoundryVTT Data Directory
 
-**Location**: User-specified (default `~/FoundryVTT`)
+**Location**: User-specified (default `~/FoundryVTT-Data`)
 
-Standard FoundryVTT data structure:
+Standard FoundryVTT data structure. This is user data that should be backed up.
 
 ```
-~/FoundryVTT/
+~/FoundryVTT-Data/
 ├── Config/
 │   └── options.json      # FoundryVTT server configuration
 ├── Data/
@@ -100,11 +100,13 @@ Standard FoundryVTT data structure:
 
 ### 5. FoundryVTT Installation
 
-**Location**: `~/foundryvtt/` (inside container, but on host filesystem via mount)
+**Location**: `~/.foundryvtt/` (hidden directory, inside container but on host filesystem via mount)
+
+This is the application code that can be re-downloaded with a new Timed URL.
 
 ```
-~/foundryvtt/
-├── main.js           # Entry point
+~/.foundryvtt/
+├── main.js           # Entry point (V13+)
 ├── main.mjs          # ES module entry point
 ├── package.json      # Node.js manifest
 ├── package-lock.json
@@ -116,6 +118,8 @@ Standard FoundryVTT data structure:
 ├── public/           # Static assets
 └── templates/        # HTML templates
 ```
+
+**Note**: The hidden directory `~/.foundryvtt` keeps the application files out of the user's visible home directory, following Linux convention for application data.
 
 ---
 
@@ -193,19 +197,20 @@ systemctl --user is-active foundryvtt.service
 │                              ▼                               │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │ Distrobox Container: foundryvtt                      │   │
-│  │ Image: ubuntu:22.04                                  │   │
+│  │ Image: ubuntu:24.04                                  │   │
 │  │ ┌──────────────────────────────────────────────────┐ │   │
 │  │ │ Node.js 22.x (via NodeSource)                    │ │   │
-│  │ │ FoundryVTT application (~/foundryvtt/)           │ │   │
+│  │ │ FoundryVTT application (~/.foundryvtt/)          │ │   │
 │  │ └──────────────────────────────────────────────────┘ │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                              │                               │
 │                              │ mounts                        │
 │                              ▼                               │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │ ~/FoundryVTT/ (User Data)                            │   │
+│  │ ~/FoundryVTT-Data/ (User Data)                       │   │
 │  │ - Worlds, modules, systems, logs                     │   │
 │  │ - Persists across container rebuilds                 │   │
+│  │ - BACK THIS UP!                                      │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐   │

@@ -20,7 +20,7 @@ You'll need:
 Open a terminal (press `Ctrl+Alt+T` on desktop, or use Konsole on Steam Deck) and run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/FoundryVTT-Bazzite/main/scripts/setup-foundryvtt.sh -o setup-foundryvtt.sh
+curl -fsSL https://raw.githubusercontent.com/BrewerSeth/FoundryVTT-Bazzite/master/scripts/setup-foundryvtt.sh -o setup-foundryvtt.sh
 chmod +x setup-foundryvtt.sh
 ```
 
@@ -52,8 +52,10 @@ Paste the download link you copied from the FoundryVTT website.
 ### Question 2: Data Location
 Where should your worlds, modules, and game data be stored?
 
-- **Default**: `~/FoundryVTT` (recommended for most users)
+- **Default**: `~/FoundryVTT-Data` (recommended for most users)
 - **Custom**: Choose your own path (useful for external drives)
+
+> **Note**: On Bazzite (an immutable system), the script will warn you if you choose a path that might not persist across updates. Stick to paths in your home directory or mounted drives.
 
 ### Question 3: Auto-Start
 Should FoundryVTT start automatically when you turn on your computer?
@@ -78,10 +80,12 @@ This takes about 5-10 minutes depending on your internet speed.
 
 ## Step 5: Launch FoundryVTT
 
-When setup completes, start FoundryVTT with:
+When setup completes, if you enabled auto-start, FoundryVTT will already be running!
+
+If you chose manual start, launch FoundryVTT with:
 
 ```bash
-distrobox enter foundryvtt -- node ~/foundryvtt/main.js --dataPath=~/FoundryVTT
+distrobox enter foundryvtt -- node ~/.foundryvtt/main.js --dataPath=~/FoundryVTT-Data
 ```
 
 Then open your browser to: **http://localhost:30000**
@@ -106,7 +110,7 @@ systemctl --user stop foundryvtt.service
 
 **If auto-start is disabled:**
 ```bash
-distrobox enter foundryvtt -- node ~/foundryvtt/main.js --dataPath=~/FoundryVTT
+distrobox enter foundryvtt -- node ~/.foundryvtt/main.js --dataPath=~/FoundryVTT-Data
 ```
 
 **If auto-start is enabled:**
@@ -155,4 +159,4 @@ ss -tlnp | grep 30000
 
 - **FoundryVTT Discord**: [discord.gg/foundryvtt](https://discord.gg/foundryvtt)
 - **Bazzite Discord**: [discord.bazzite.gg](https://discord.bazzite.gg)
-- **This project**: [GitHub Issues](https://github.com/YOUR_USERNAME/FoundryVTT-Bazzite/issues)
+- **This project**: [GitHub Issues](https://github.com/BrewerSeth/FoundryVTT-Bazzite/issues)

@@ -237,3 +237,32 @@ Execute phases sequentially in order:
 - Commit after each completed phase (not individual tasks)
 - Test on actual Bazzite system before shipping
 - Constitution requires: `set -euo pipefail`, ShellCheck compliance, clear error messages
+
+---
+
+## Post-Implementation Additions
+
+The following features were added during implementation and testing but were not in the original task list:
+
+### Bug Fixes
+
+- **Broken installation detection**: Script now detects when config exists but container is missing (e.g., user ran `distrobox rm`). Offers repair or fresh install options.
+- **Safe path validation**: Script warns users if they choose data paths that may not persist on immutable Bazzite (e.g., `/opt`, `/usr`).
+
+### Path Convention Changes
+
+Original paths were confusing (`~/foundryvtt` vs `~/FoundryVTT`). Updated to:
+- Install path: `~/.foundryvtt` (hidden, application files)
+- Data path: `~/FoundryVTT-Data` (visible, user data)
+
+### Summary Report
+
+Added comprehensive summary report at end of setup showing:
+- Actions performed and skipped
+- Current configuration
+- Access instructions
+- Useful systemd commands (when auto-start enabled)
+
+### GitHub CDN Caching Note
+
+GitHub's raw.githubusercontent.com has a 5-minute cache. Users may need to append `?nocache=$(date +%s)` to bypass cache when downloading updated scripts.
