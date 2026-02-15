@@ -970,6 +970,15 @@ show_summary_report() {
 
 # Handle existing installation - offer reconfigure options
 handle_existing_installation() {
+    # First, check if the container still exists
+    local container_name="${CONTAINER_NAME:-${DEFAULT_CONTAINER_NAME}}"
+    
+    if ! container_exists "${container_name}"; then
+        # Config exists but container is missing - broken installation
+        handle_broken_installation "${container_name}"
+        return
+    fi
+    
     echo ""
     echo "=========================================="
     echo "Existing Installation Detected"
@@ -1002,6 +1011,107 @@ handle_existing_installation() {
             exit 0
             ;;
     esac
+}
+
+# Handle broken installation (config exists but container missing)
+handle_broken_installation() {
+    local container_name="$1"
+    
+    echo ""
+    echo "=========================================="
+    echo "Broken Installation Detected"
+    echo "=========================================="
+    echo ""
+    warn "Configuration found, but the container '${container_name}' is missing."
+    echo ""
+    echo "This can happen if:"
+    echo "  - The Distrobox container was manually removed"
+    echo "  - The container was corrupted or deleted"
+    echo ""
+    echo "Previous configuration:"
+    echo "  Version:    ${FOUNDRY_VERSION:-unknown}"
+    echo "  Data path:  ${DATA_PATH:-unknown}"
+    echo "  Auto-start: ${AUTO_START:-unknown}"
+    echo ""
+    
+    # Check if data directory still exists
+    local data_path="${DATA_PATH:-${DEFAULT_DATA_PATH}}"
+    if [[ -d "${data_path}" ]] && [[ -n "$(ls -A "${data_path}" 2>/dev/null)" ]]; then
+        success "Good news: Your data directory still exists at ${data_path}"
+        echo ""
+    fi
+    
+    echo "What would you like to do?"
+    echo ""
+    echo "  1) Repair installation (recreate container, keep existing data)"
+    echo "  2) Fresh install (requires new Timed URL)"
+    echo "  3) Exit without changes"
+    echo ""
+    read -rp "Choose an option (1-3): " choice
+    
+    case "${choice}" in
+        1)
+            repair_installation
+            ;;
+        2)
+            reinstall_fresh
+            ;;
+        3|*)
+            info "Exiting without changes."
+            exit 0
+            ;;
+    esac
+}
+
+# Repair a broken installation (recreate container without new download)
+repair_installation() {
+    SETUP_MODE="repair"
+    info "Repairing installation..."
+    
+    # Check internet connectivity (needed for container setup)
+    check_internet
+    
+    # Get stored values or use defaults
+    local foundry_version="${FOUNDRY_VERSION:-}"
+    local node_version="${NODE_VERSION:-22}"
+    local data_path="${DATA_PATH:-${DEFAULT_DATA_PATH}}"
+    local install_path="${INSTALL_PATH:-${DEFAULT_INSTALL_PATH}}"
+    local container_name="${CONTAINER_NAME:-${DEFAULT_CONTAINER_NAME}}"
+    local port="${PORT:-${DEFAULT_PORT}}"
+    
+    # Check if FoundryVTT files still exist
+    if [[ ! -f "${install_path}/main.js" ]]; then
+        error "FoundryVTT installation files not found at ${install_path}"
+        echo ""
+        echo "The FoundryVTT application files are missing."
+        echo "You'll need to do a fresh install with a new Timed URL."
+        echo ""
+        read -rp "Do a fresh install now? (y/n): " do_fresh
+        if [[ "${do_fresh}" =~ ^[Yy] ]]; then
+            reinstall_fresh
+        else
+            exit 1
+        fi
+        return
+    fi
+    
+    info "FoundryVTT files found at ${install_path}"
+    track_action "Verified FoundryVTT files exist"
+    
+    # Recreate the container
+    create_container "${container_name}"
+    
+    # Reinstall Node.js in the new container
+    install_nodejs "${container_name}" "${node_version}"
+    
+    # Prompt for auto-start preference
+    prompt_auto_start
+    
+    # Save updated configuration
+    save_config "${foundry_version}" "${node_version}" "${data_path}" "${install_path}" "${container_name}" "${port}" "${AUTO_START}"
+    
+    # Show completion
+    show_summary_report "${install_path}" "${data_path}" "${container_name}" "${port}" "${AUTO_START}"
 }
 
 # Reconfigure existing installation (no Timed URL needed)
