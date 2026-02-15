@@ -1,11 +1,11 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.1.0 → 1.2.0
-Modified principles:
-  - I. Documentation-First: Updated rationale to emphasize gamer-friendly tone
+Version change: 1.2.0 → 1.3.0
+Modified principles: None
 Added sections:
-  - Mission (project purpose, target audience, success criteria)
+  - Values: Transparency (AI-assisted development, open process)
+  - Values: Open Source First (tool selection, licensing, community)
 Removed sections: None
 Templates requiring updates:
   - .specify/templates/plan-template.md ✅ (no changes needed - generic)
@@ -34,6 +34,33 @@ and rewarding.
 **Success looks like**: A user with no Linux experience can follow our documentation,
 run our scripts, and have a working FoundryVTT server in minutes—with a smile on
 their face.
+
+## Values
+
+### Transparency
+
+This project is built in the open. We are honest about our tools, methods, and
+limitations.
+
+- **AI-Assisted Development**: We use AI agents (such as Claude, GPT, and other LLMs)
+  to help write scripts, documentation, and solve problems. We do not hide this—AI
+  is a tool like any other, and we believe in being upfront about how we work.
+- **Open Process**: Planning documents, specifications, and decision rationale are
+  maintained in the repository. Anyone can see what we're working on and why.
+- **Honest Limitations**: If something doesn't work well or has known issues, we
+  document it rather than hide it.
+
+### Open Source First
+
+We prefer open source tools and contribute back to the community when possible.
+
+- **Tool Selection**: When choosing dependencies or tools, open source options MUST
+  be preferred over proprietary alternatives unless there is a compelling technical
+  reason documented in the decision.
+- **Licensing**: All project code is open source. We respect the licenses of tools
+  we depend on.
+- **Community**: We welcome contributions and aim to make the codebase accessible
+  to new contributors.
 
 ## Core Principles
 
@@ -186,4 +213,4 @@ project. All contributions MUST comply with these principles.
 - Violations MUST be resolved before merge or explicitly justified with documented
   rationale in the Complexity Tracking section of the relevant plan
 
-**Version**: 1.2.0 | **Ratified**: 2026-02-15 | **Last Amended**: 2026-02-15
+**Version**: 1.3.0 | **Ratified**: 2026-02-15 | **Last Amended**: 2026-02-15
