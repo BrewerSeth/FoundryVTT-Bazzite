@@ -2,6 +2,8 @@
 
 Easy FoundryVTT setup for Bazzite Linux (Steam Deck and desktop).
 
+> **Note**: This project was built with AI assistance. See our [constitution](.specify/memory/constitution.md) for transparency commitments.
+
 ## What is this?
 
 A single script that sets up [FoundryVTT](https://foundryvtt.com) in an isolated container on [Bazzite](https://bazzite.gg). Perfect for gamers who want to self-host their virtual tabletop without Linux expertise.
@@ -13,6 +15,8 @@ A single script that sets up [FoundryVTT](https://foundryvtt.com) in an isolated
 - **Custom data location**: Store your worlds on internal, external, or network drives
 - **Auto-start option**: Have FoundryVTT start automatically when you boot your computer
 - **Beginner-friendly**: Clear prompts guide you through every step
+- **Safe for immutable systems**: Guides you to store data in locations that persist across Bazzite updates
+- **Re-runnable**: Run the script again to reconfigure settings or reinstall
 
 ## Requirements
 
@@ -25,7 +29,7 @@ A single script that sets up [FoundryVTT](https://foundryvtt.com) in an isolated
 ### 1. Download the setup script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/FoundryVTT-Bazzite/main/scripts/setup-foundryvtt.sh -o setup-foundryvtt.sh
+curl -fsSL https://raw.githubusercontent.com/BrewerSeth/FoundryVTT-Bazzite/main/scripts/setup-foundryvtt.sh -o setup-foundryvtt.sh
 chmod +x setup-foundryvtt.sh
 ```
 
@@ -51,6 +55,34 @@ The script will ask for:
 
 Open your browser to: **http://localhost:30000**
 
+## Re-running the Script
+
+Already have FoundryVTT installed? Run the script again to:
+
+- **Reconfigure**: Change your data location or auto-start settings (no new download needed)
+- **Reinstall**: Remove and reinstall FoundryVTT completely (requires a new Timed URL)
+
+```bash
+./setup-foundryvtt.sh
+```
+
+## Managing FoundryVTT
+
+If you enabled auto-start, use these commands:
+
+```bash
+# Check if FoundryVTT is running
+systemctl --user status foundryvtt.service
+
+# View logs
+journalctl --user -u foundryvtt.service -f
+
+# Stop/Start/Restart
+systemctl --user stop foundryvtt.service
+systemctl --user start foundryvtt.service
+systemctl --user restart foundryvtt.service
+```
+
 ## Documentation
 
 - [Quick Start Guide](specs/001-distrobox-setup-script/quickstart.md)
@@ -69,7 +101,7 @@ Your FoundryVTT data is stored on your host system, so it persists even if you r
 
 ## Contributing
 
-This project is built with AI assistance and welcomes contributions. See our [specifications](specs/) for planned features.
+Contributions are welcome! See our [specifications](specs/) for technical details and planned features.
 
 ## License
 
@@ -80,3 +112,4 @@ MIT
 - [FoundryVTT](https://foundryvtt.com) - The amazing virtual tabletop
 - [Bazzite](https://bazzite.gg) - Gaming-focused immutable Linux
 - [Distrobox](https://github.com/89luca89/distrobox) - Container magic
+- Built with AI assistance using [OpenCode](https://github.com/anomalyco/opencode)
