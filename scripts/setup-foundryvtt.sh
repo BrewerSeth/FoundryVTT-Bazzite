@@ -26,8 +26,8 @@ readonly SCRIPT_VERSION="1.0.0"
 
 # Default configuration values
 readonly DEFAULT_CONTAINER_NAME="foundryvtt"
-readonly DEFAULT_DATA_PATH="${HOME}/FoundryVTT"
-readonly DEFAULT_INSTALL_PATH="${HOME}/foundryvtt"
+readonly DEFAULT_DATA_PATH="${HOME}/FoundryVTT-Data"
+readonly DEFAULT_INSTALL_PATH="${HOME}/.foundryvtt"
 readonly DEFAULT_PORT="30000"
 readonly CONFIG_DIR="${HOME}/.config/foundryvtt-bazzite"
 readonly CONFIG_FILE="${CONFIG_DIR}/config"
