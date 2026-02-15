@@ -48,7 +48,7 @@ chmod +x setup-foundryvtt.sh
 
 The script will ask for:
 - Your Timed URL
-- Where to store your data (default: `~/FoundryVTT`)
+- Where to store your data (default: `~/FoundryVTT-Data`)
 - Whether to enable auto-start
 
 ### 4. Access FoundryVTT
