@@ -1,0 +1,37 @@
+# FoundryVTT-Bazzite .gitignore
+# Bash/Shell project patterns
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+.env.*
+*.local
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Test artifacts
+coverage/
+test-results/
+
+# Build artifacts (if any)
+dist/
+build/
+
+# Node.js (for any tooling)
+node_modules/
+
+# ShellCheck cache
+.shellcheck/
