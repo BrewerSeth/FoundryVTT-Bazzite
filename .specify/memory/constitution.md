@@ -1,11 +1,10 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.2.0 → 1.3.0
+Version change: 1.3.0 → 1.4.0
 Modified principles: None
 Added sections:
-  - Values: Transparency (AI-assisted development, open process)
-  - Values: Open Source First (tool selection, licensing, community)
+  - Technology Constraints: Ubuntu LTS container decision with rationale
 Removed sections: None
 Templates requiring updates:
   - .specify/templates/plan-template.md ✅ (no changes needed - generic)
@@ -145,9 +144,25 @@ can cause data loss or system instability.
 
 **Runtime Environment**:
 - Host OS: Bazzite (Fedora-based immutable desktop)
-- Container: Distrobox (Podman-backed)
+- Container: Distrobox (Podman-backed) with **Ubuntu LTS** base image
 - Service Management: Quadlet/Systemd
 - Application: FoundryVTT (Node.js-based)
+
+**Why Ubuntu LTS for containers (not Fedora)?**
+
+We deliberately use Ubuntu LTS as the Distrobox base image instead of Fedora,
+even though Bazzite is Fedora-based. This is a safety decision:
+
+- **Clear visual distinction**: When users see `apt` commands, they immediately
+  know they're in the container. When they see `dnf`, they know they're on the
+  host. This prevents confusion.
+- **Prevents accidental host modification**: A user who runs `apt install...`
+  on the Bazzite host gets an error—which is good. It stops them from
+  accidentally modifying their immutable system.
+- **Reinforces container boundary**: The different environment makes it obvious
+  that the container is a separate, isolated space.
+
+This tradeoff prioritizes user safety over the convenience of matching the host.
 
 **Script Requirements**:
 - Language: Bash (POSIX-compatible where practical)
@@ -213,4 +228,4 @@ project. All contributions MUST comply with these principles.
 - Violations MUST be resolved before merge or explicitly justified with documented
   rationale in the Complexity Tracking section of the relevant plan
 
-**Version**: 1.3.0 | **Ratified**: 2026-02-15 | **Last Amended**: 2026-02-15
+**Version**: 1.4.0 | **Ratified**: 2026-02-15 | **Last Amended**: 2026-02-15
