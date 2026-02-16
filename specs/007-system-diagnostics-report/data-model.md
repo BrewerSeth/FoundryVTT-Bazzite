@@ -36,6 +36,7 @@ Individual sections of the diagnostic report.
 | `host_updates` | Available Bazzite updates | Update availability |
 | `containers` | Distrobox container list | Per-container status |
 | `container_updates` | Available Ubuntu packages | Per-container update count |
+| `foundry_details` | Data directory, worlds, modules, config | Data health |
 | `instances` | FoundryVTT instances | Per-instance status |
 | `network` | Ports, connectivity | Component status |
 | `logs` | Recent log excerpts | Error count |
@@ -84,7 +85,30 @@ Status of available system updates for host and guest.
 
 **Update Check Timeout**: 10 seconds maximum for each check to keep report generation fast.
 
-### 7. Container Status
+### 7. FoundryVTT Details
+
+**Type**: Data structure
+
+Detailed information about FoundryVTT installation and data.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data_directory_size` | string | Total size (e.g., "2.3GB") or timeout message |
+| `worlds_count` | integer | Number of installed worlds |
+| `modules_count` | integer | Number of installed modules |
+| `systems_count` | integer | Number of installed game systems |
+| `assets_size` | string | Size of assets directory |
+| `config_port` | integer | Port configured in options.json |
+| `config_upnp` | boolean | UPnP enabled status |
+| `config_hostname` | string | Custom hostname if set |
+| `config_compress` | boolean | Socket compression enabled |
+| `largest_files` | array | Top 10 largest files with sizes |
+| `version_check_status` | enum | `current`, `outdated`, `unknown`, `timeout` |
+| `latest_version` | string | Latest available version from website |
+
+**Data Analysis Timeout**: 5 seconds maximum for size calculations on large directories.
+
+### 8. Container Status
 
 **Type**: Data structure
 
@@ -99,7 +123,7 @@ Status of a Distrobox container.
 | `cpu_percent` | float | Current CPU usage |
 | `memory_usage` | string | Memory usage (e.g., "245MB / 1GB") |
 
-### 8. Instance Status
+### 9. Instance Status
 
 **Type**: Data structure
 
@@ -201,6 +225,22 @@ Optional output for programmatic processing.
         "check_status": "available",
         "status": "WARNING"
       }
+    },
+    "foundry_details": {
+      "status": "HEALTHY",
+      "data_directory_size": "2.3GB",
+      "worlds_count": 3,
+      "modules_count": 15,
+      "systems_count": 2,
+      "assets_size": "1.8GB",
+      "config_port": 30000,
+      "config_upnp": false,
+      "version_check_status": "current",
+      "latest_version": "13.351",
+      "largest_files": [
+        {"path": "Data/assets/scenes/world-map.webp", "size": "156MB"},
+        {"path": "Data/modules/some-module/module.json", "size": "45MB"}
+      ]
     },
     "instances": [
       {

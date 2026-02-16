@@ -336,7 +336,155 @@ timeout 10 distrobox enter foundryvtt -- apt list --upgradable
 
 ---
 
-## 7. Privacy Redaction
+## 7. FoundryVTT Internal Details
+
+### Decision: Parse data directory structure and Config/options.json
+
+### Rationale
+
+Users need visibility into their FoundryVTT installation beyond just "is it running?" Details like storage usage, content counts, and configuration help with:
+- Capacity planning (is disk full of maps or modules?)
+- Troubleshooting (is a misconfiguration causing issues?)
+- Version management (are we on latest?)
+
+### Data Directory Analysis
+
+The data directory structure:
+
+```
+~/FoundryVTT-Data/
+├── Config/
+│   ├── options.json          # Main configuration
+│   └── world.json            # World-specific configs
+├── Data/
+│   ├── worlds/               # Game worlds (subdirectories)
+│   ├── modules/              # Installed modules (subdirectories)
+│   ├── systems/              # Game systems (subdirectories)
+│   └── assets/               # Uploaded assets
+└── Logs/
+    └── *.log                 # Application logs
+```
+
+### Commands for Data Analysis
+
+```bash
+# Get total data directory size (with timeout for large directories)
+timeout 5 du -sh ~/FoundryVTT-Data 2>/dev/null || echo "Size calculation timeout"
+
+# Breakdown by subdirectory
+timeout 5 du -sh ~/FoundryVTT-Data/*/ 2>/dev/null | sort -hr
+
+# Count worlds, modules, systems
+worlds_count=$(ls -1 ~/FoundryVTT-Data/Data/worlds/ 2>/dev/null | wc -l)
+modules_count=$(ls -1 ~/FoundryVTT-Data/Data/modules/ 2>/dev/null | wc -l)
+systems_count=$(ls -1 ~/FoundryVTT-Data/Data/systems/ 2>/dev/null | wc -l)
+
+# Find largest files (top 10)
+timeout 5 find ~/FoundryVTT-Data -type f -exec ls -lh {} + 2>/dev/null | sort -k5 -hr | head -10
+
+# Check for core data files
+assets_size=$(timeout 3 du -sh ~/FoundryVTT-Data/Data/assets 2>/dev/null | cut -f1)
+```
+
+### Configuration Analysis
+
+Parse key settings from `Config/options.json`:
+
+```bash
+# Read configuration values (safely with jq if available, fallback to grep)
+if command -v jq &>/dev/null; then
+    hostname=$(jq -r '.hostname // "not set"' ~/FoundryVTT-Data/Config/options.json 2>/dev/null)
+    port=$(jq -r '.port // "30000"' ~/FoundryVTT-Data/Config/options.json 2>/dev/null)
+    upnp=$(jq -r '.upnp // false' ~/FoundryVTT-Data/Config/options.json 2>/dev/null)
+else
+    # Fallback to grep (less reliable but works without jq)
+    hostname=$(grep -o '"hostname"[[:space:]]*:[[:space:]]*"[^"]*"' ~/FoundryVTT-Data/Config/options.json 2>/dev/null | grep -o '"[^"]*"$' | tr -d '"')
+fi
+```
+
+**Key Configuration Fields to Report**:
+- `port` - Server port
+- `upnp` - UPnP enabled/disabled
+- `hostname` - Custom hostname if set
+- `routePrefix` - URL prefix if behind proxy
+- `compressSocket` - Socket compression
+- `cssTheme` - UI theme
+- `chatBubbles` - Chat bubble settings
+
+**Sensitive Fields to EXCLUDE**:
+- `adminKey` - Admin access key
+- `password` - World password
+- Any API keys or credentials
+
+### Version Checking
+
+Query FoundryVTT website for latest version:
+
+```bash
+# Get installed version from config
+installed_version=$(grep '"version"' ~/.config/foundryvtt-bazzite/config | cut -d'"' -f4)
+
+# Query FoundryVTT website for latest stable (with timeout)
+latest_version=$(timeout 5 curl -s "https://foundryvtt.com/releases/stable" 2>/dev/null | grep -oP 'Version \K[0-9.]+' | head -1)
+
+# Alternative: Check via API if available
+# latest_version=$(timeout 5 curl -s "https://api.foundryvtt.com/version" 2>/dev/null | jq -r '.stable // "unknown"')
+
+if [[ "$latest_version" != "unknown" && "$latest_version" != "" ]]; then
+    if [[ "$installed_version" == "$latest_version" ]]; then
+        echo "Version: $installed_version (up to date)"
+    else
+        echo "Version: $installed_version (latest: $latest_version)"
+    fi
+else
+    echo "Version: $installed_version (cannot check for updates)"
+fi
+```
+
+### Performance Impact Considerations
+
+Large data directories can slow down reporting:
+
+**Mitigation Strategies**:
+1. **Timeout on all operations**: 5-10 second max
+2. **Sampling for large directories**: Instead of `du -sh`, use `df` or sample
+3. **Background caching**: (Future feature) Cache directory sizes, refresh periodically
+4. **Quick vs Full mode**: 
+   - Quick: Just total size
+   - Full: Detailed breakdown
+
+### Implementation
+
+```bash
+analyze_foundry_data() {
+    local data_path="$1"
+    local analysis=""
+    
+    # Total size with timeout
+    local total_size=$(timeout 5 du -sh "$data_path" 2>/dev/null | cut -f1)
+    [[ -z "$total_size" ]] && total_size="(timeout - too large to calculate)"
+    analysis+="Total Size: $total_size\n"
+    
+    # Counts (fast operations)
+    local worlds=$(ls -1 "$data_path/Data/worlds" 2>/dev/null | wc -l)
+    local modules=$(ls -1 "$data_path/Data/modules" 2>/dev/null | wc -l)
+    local systems=$(ls -1 "$data_path/Data/systems" 2>/dev/null | wc -l)
+    analysis+="Worlds: $worlds, Modules: $modules, Systems: $systems\n"
+    
+    # Subdirectory sizes (with timeout)
+    analysis+="Size Breakdown:\n"
+    for dir in worlds modules systems assets; do
+        local size=$(timeout 3 du -sh "$data_path/Data/$dir" 2>/dev/null | cut -f1)
+        [[ -n "$size" ]] && analysis+="  $dir: $size\n"
+    done
+    
+    echo -e "$analysis"
+}
+```
+
+---
+
+## 8. Privacy Redaction
 
 ### Decision: Pattern-based replacement with placeholder tokens
 
@@ -384,6 +532,8 @@ redact_sensitive_info() {
 | Network status | `ss` + `curl` | Lightweight, no external deps |
 | Host updates | `rpm-ostree status` with timeout | Bazzite standard, atomic updates |
 | Guest updates | `apt list --upgradable` with timeout | Ubuntu standard, security focus |
+| FoundryVTT details | Parse data dir + Config/options.json | Storage, config, version info |
+| Version check | Query foundryvtt.com with timeout | Alert users to available updates |
 | Report format | Structured text with sections | Human + AI readable |
 | Privacy | Pattern-based redaction | Safe sharing, preserves value |
 

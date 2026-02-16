@@ -88,6 +88,18 @@ A user needs help troubleshooting and wants to share their diagnostics report wi
 - What happens when update checks take too long?
   - The script implements a 10-second timeout for update checks to keep the report generation fast.
 
+- What happens when FoundryVTT data directory is extremely large (100GB+)?
+  - The script uses sampling or timeout for size calculation to prevent hanging, and reports "Large directory (sampling)" with estimated size.
+
+- What happens when Config/options.json is missing or corrupted?
+  - The report indicates configuration is unavailable and suggests checking data directory permissions.
+
+- What happens when FoundryVTT version check API is unreachable?
+  - The report shows installed version without comparison, indicating "version check unavailable (offline)".
+
+- What happens when a world/module/system directory cannot be read?
+  - The report counts accessible items and notes permission errors for inaccessible directories.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -127,6 +139,18 @@ A user needs help troubleshooting and wants to share their diagnostics report wi
 - **FR-017**: The script SHOULD warn users if the host system has pending updates that may affect FoundryVTT operation.
 
 - **FR-018**: The script SHOULD warn users if the guest container has security updates available.
+
+- **FR-019**: The script MUST report detailed FoundryVTT configuration information including:
+  - Data directory size and breakdown (worlds, modules, systems, assets)
+  - Count of installed worlds, modules, and systems
+  - Key configuration values from Config/options.json (without sensitive data)
+  - Total number of users/players (if accessible)
+
+- **FR-020**: The script SHOULD check if the installed FoundryVTT version is the latest available by querying the FoundryVTT releases API or website.
+
+- **FR-021**: The script MUST report the largest directories/files in the FoundryVTT data path to help identify storage bloat.
+
+- **FR-022**: The script SHOULD identify potential configuration issues (missing required settings, deprecated options, performance-related settings).
 
 ### Key Entities
 
