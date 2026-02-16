@@ -825,6 +825,333 @@ collect_guest_updates() {
     fi
 }
 
+# T017 [US1]: Recent Log Collection
+collect_recent_logs() {
+    local section_status="HEALTHY"
+    local container_name
+    local log_entries=""
+    local error_count=0
+    
+    container_name=$(get_config_value "CONTAINER_NAME" "foundryvtt")
+    
+    # Try to get logs from systemd journal
+    if command -v journalctl &>/dev/null; then
+        log_entries=$(timeout $TIMEOUT_SHORT journalctl --user -u "${container_name}.service" -n 10 --no-pager 2>/dev/null | tail -n 10 || echo "")
+        
+        # Count errors and warnings
+        if [[ -n "$log_entries" ]]; then
+            error_count=$(echo "$log_entries" | grep -cE "(ERROR|FATAL|Exception)" || echo 0)
+            
+            if [[ "$error_count" -gt 5 ]]; then
+                section_status="CRITICAL"
+                set_overall_status "CRITICAL"
+            elif [[ "$error_count" -gt 0 ]]; then
+                section_status="DEGRADED"
+                set_overall_status "DEGRADED"
+            fi
+        fi
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "logs": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "error_count": "'"$error_count"'",'
+        echo '      "recent_entries": ['
+        if [[ -n "$log_entries" ]]; then
+            local first=true
+            while IFS= read -r line; do
+                [[ "$first" == true ]] || echo ","
+                first=false
+                # Escape the line for JSON
+                local escaped_line=$(echo "$line" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g')
+                echo -n '        "'"$escaped_line"'"'
+            done <<< "$log_entries"
+            echo ""
+        fi
+        echo '      ]'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "RECENT LOGS"
+        echo "============================================================"
+        if [[ -n "$log_entries" ]]; then
+            echo "$log_entries"
+        else
+            echo "No recent log entries available"
+        fi
+        if [[ "$error_count" -gt 0 ]]; then
+            echo ""
+            warn "Found ${error_count} errors in recent logs"
+        fi
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
+# T020 [US1]: FoundryVTT Data Directory Analysis
+collect_foundry_data() {
+    local section_status="HEALTHY"
+    local data_path
+    local total_size="unknown"
+    local worlds_count=0
+    local modules_count=0
+    local systems_count=0
+    local assets_size="unknown"
+    local permission_error=false
+    
+    data_path=$(get_config_value "DATA_PATH" "${HOME}/FoundryVTT-Data")
+    
+    # T030: Handle permission denied edge case
+    if [[ ! -r "$data_path" ]]; then
+        permission_error=true
+        section_status="DEGRADED"
+        set_overall_status "DEGRADED"
+    else
+        # T031: Handle large directories with timeout
+        total_size=$(timeout $TIMEOUT_SHORT du -sh "$data_path" 2>/dev/null | cut -f1 || echo "timeout")
+        
+        if [[ "$total_size" == "timeout" ]]; then
+            # For very large directories, just get approximate size
+            total_size=$(df -h "$data_path" 2>/dev/null | tail -1 | awk '{print $3}' || echo "unknown")
+            total_size="~${total_size} (estimated)"
+        fi
+        
+        # Count worlds, modules, systems (fast operations)
+        if [[ -d "$data_path/Data/worlds" ]]; then
+            worlds_count=$(ls -1 "$data_path/Data/worlds" 2>/dev/null | wc -l)
+        fi
+        
+        if [[ -d "$data_path/Data/modules" ]]; then
+            modules_count=$(ls -1 "$data_path/Data/modules" 2>/dev/null | wc -l)
+        fi
+        
+        if [[ -d "$data_path/Data/systems" ]]; then
+            systems_count=$(ls -1 "$data_path/Data/systems" 2>/dev/null | wc -l)
+        fi
+        
+        # Get assets size
+        if [[ -d "$data_path/Data/assets" ]]; then
+            assets_size=$(timeout $TIMEOUT_SHORT du -sh "$data_path/Data/assets" 2>/dev/null | cut -f1 || echo "timeout")
+        fi
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "foundry_data": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "data_path": "'"$data_path"'",'
+        echo '      "total_size": "'"$total_size"'",'
+        echo '      "worlds_count": "'"$worlds_count"'",'
+        echo '      "modules_count": "'"$modules_count"'",'
+        echo '      "systems_count": "'"$systems_count"'",'
+        echo '      "assets_size": "'"$assets_size"'",'
+        echo '      "permission_error": "'"$permission_error"'"'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "FOUNDRYVTT DATA"
+        echo "============================================================"
+        echo "Data Path: ${data_path}"
+        if [[ "$permission_error" == true ]]; then
+            warn "Permission denied accessing data directory"
+            echo "  Check permissions: ls -la ${data_path}"
+        else
+            echo "Total Size: ${total_size}"
+            echo "Worlds: ${worlds_count}"
+            echo "Modules: ${modules_count}"
+            echo "Systems: ${systems_count}"
+            if [[ "$assets_size" != "unknown" ]]; then
+                echo "Assets: ${assets_size}"
+            fi
+        fi
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
+# T021 [US1]: FoundryVTT Configuration Parser
+collect_foundry_config() {
+    local section_status="HEALTHY"
+    local data_path
+    local config_port=""
+    local config_upnp=""
+    local config_hostname=""
+    local config_compress=""
+    local config_found=false
+    
+    data_path=$(get_config_value "DATA_PATH" "${HOME}/FoundryVTT-Data")
+    local config_file="${data_path}/Config/options.json"
+    
+    # Try to parse config file
+    if [[ -f "$config_file" ]] && [[ -r "$config_file" ]]; then
+        config_found=true
+        
+        # Use grep/sed for simple parsing (more portable than jq)
+        config_port=$(grep -o '"port":[[:space:]]*[0-9]*' "$config_file" 2>/dev/null | grep -o '[0-9]*' || echo "30000")
+        config_upnp=$(grep -o '"upnp":[[:space:]]*true\|"upnp":[[:space:]]*false' "$config_file" 2>/dev/null | grep -o 'true\|false' || echo "false")
+        config_hostname=$(grep -o '"hostname":[[:space:]]*"[^"]*"' "$config_file" 2>/dev/null | sed 's/.*"hostname":[[:space:]]*"\([^"]*\)".*/\1/' || echo "")
+        config_compress=$(grep -o '"compressSocket":[[:space:]]*true\|"compressSocket":[[:space:]]*false' "$config_file" 2>/dev/null | grep -o 'true\|false' || echo "true")
+    else
+        section_status="DEGRADED"
+        set_overall_status "DEGRADED"
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "foundry_config": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "config_found": "'"$config_found"'",'
+        echo '      "port": "'"${config_port:-30000}"'",'
+        echo '      "upnp": "'"${config_upnp:-false}"'",'
+        echo '      "hostname": "'"${config_hostname:-}"'",'
+        echo '      "compress_socket": "'"${config_compress:-true}"'"'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "FOUNDRYVTT CONFIGURATION"
+        echo "============================================================"
+        if [[ "$config_found" == true ]]; then
+            echo "Config File: ${config_file}"
+            echo "Port: ${config_port:-30000}"
+            echo "UPnP: ${config_upnp:-false}"
+            if [[ -n "$config_hostname" ]]; then
+                echo "Hostname: ${config_hostname}"
+            fi
+            echo "Socket Compression: ${config_compress:-true}"
+        else
+            warn "Configuration file not found"
+            echo "  Expected: ${config_file}"
+            echo "  Run the setup script to configure FoundryVTT"
+        fi
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
+# T022 [US1]: FoundryVTT Version Check
+check_foundry_version() {
+    local section_status="HEALTHY"
+    local installed_version=""
+    local latest_version="unknown"
+    local version_status="unknown"
+    local check_performed=false
+    
+    # Get installed version from config
+    installed_version=$(get_config_value "FOUNDRY_VERSION" "unknown")
+    
+    # T032: Handle offline system - check if we can reach foundryvtt.com
+    if command -v curl &>/dev/null; then
+        # Try to get latest version with timeout
+        latest_version=$(timeout $TIMEOUT_SHORT curl -s "https://foundryvtt.com/releases/stable" 2>/dev/null | grep -oP 'Version \K[0-9.]+' | head -1 || echo "")
+        
+        if [[ -n "$latest_version" ]]; then
+            check_performed=true
+            
+            if [[ "$installed_version" == "$latest_version" ]]; then
+                version_status="current"
+            else
+                version_status="outdated"
+                section_status="DEGRADED"
+                set_overall_status "DEGRADED"
+            fi
+        else
+            version_status="offline"
+            latest_version="unknown (cannot reach foundryvtt.com)"
+        fi
+    else
+        version_status="no_curl"
+        latest_version="unknown (curl not available)"
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "version_check": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "installed_version": "'"$installed_version"'",'
+        echo '      "latest_version": "'"$latest_version"'",'
+        echo '      "version_status": "'"$version_status"'",'
+        echo '      "check_performed": "'"$check_performed"'"'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "VERSION CHECK"
+        echo "============================================================"
+        echo "Installed: ${installed_version}"
+        if [[ "$version_status" == "current" ]]; then
+            success "Up to date (latest: ${latest_version})"
+        elif [[ "$version_status" == "outdated" ]]; then
+            warn "Update available: ${latest_version}"
+            echo "  Visit: https://foundryvtt.com to download"
+        else
+            info "Latest version: ${latest_version}"
+        fi
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
+# T023 [US1]: Largest Files Identification
+collect_largest_files() {
+    local section_status="HEALTHY"
+    local data_path
+    local largest_files=""
+    local file_count=0
+    
+    data_path=$(get_config_value "DATA_PATH" "${HOME}/FoundryVTT-Data")
+    
+    # Only proceed if directory is readable
+    if [[ -r "$data_path" ]]; then
+        # Find largest files with timeout (T031)
+        largest_files=$(timeout $TIMEOUT_SHORT find "$data_path" -type f -exec ls -lh {} + 2>/dev/null | sort -k5 -hr | head -5 || echo "")
+        
+        if [[ -n "$largest_files" ]]; then
+            file_count=$(echo "$largest_files" | wc -l)
+        fi
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "largest_files": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "file_count": "'"$file_count"'",'
+        echo '      "files": ['
+        if [[ -n "$largest_files" ]]; then
+            local first=true
+            while IFS= read -r line; do
+                [[ "$first" == true ]] || echo ","
+                first=false
+                # Parse ls output: permissions links owner group size date name
+                local size=$(echo "$line" | awk '{print $5}')
+                local name=$(echo "$line" | awk '{print $9}')
+                # Escape for JSON
+                name=$(echo "$name" | sed 's/\\/\\\\/g; s/"/\\"/g')
+                echo -n '        {"size": "'"$size"'", "path": "'"$name"'"}'
+            done <<< "$largest_files"
+            echo ""
+        fi
+        echo '      ]'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "LARGEST FILES"
+        echo "============================================================"
+        if [[ -n "$largest_files" ]]; then
+            echo "Top 5 largest files in data directory:"
+            echo "$largest_files" | while IFS= read -r line; do
+                local size=$(echo "$line" | awk '{print $5}')
+                local name=$(echo "$line" | awk '{print $9}')
+                echo "  ${size} - ${name}"
+            done
+        else
+            echo "Could not determine largest files"
+            echo "  (directory may be too large or inaccessible)"
+        fi
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
 # Main function with diagnostic collection
 main() {
     # Parse arguments
@@ -854,6 +1181,11 @@ main() {
         collect_guest_updates
         collect_instance_status
         collect_network_status
+        collect_recent_logs
+        collect_foundry_data
+        collect_foundry_config
+        check_foundry_version
+        collect_largest_files
     fi
     
     # End report
