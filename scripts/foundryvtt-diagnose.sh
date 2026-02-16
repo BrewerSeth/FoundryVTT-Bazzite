@@ -514,7 +514,7 @@ collect_container_status() {
         section_status="CRITICAL"
         set_overall_status "CRITICAL"
         container_state="distrobox_not_found"
-    elif timeout $TIMEOUT_SHORT distrobox list 2>/dev/null | grep -q "| ${container_name} "; then
+    elif timeout $TIMEOUT_SHORT distrobox list 2>/dev/null | grep -qE "\| *${container_name} +\|"; then
         # Container exists, get details
         container_state=$(timeout $TIMEOUT_SHORT podman inspect "${container_name}" --format '{{.State.Status}}' 2>/dev/null || echo "unknown")
         container_image=$(timeout $TIMEOUT_SHORT podman inspect "${container_name}" --format '{{.Config.Image}}' 2>/dev/null || echo "unknown")
