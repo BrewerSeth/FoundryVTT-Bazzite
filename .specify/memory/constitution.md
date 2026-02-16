@@ -1,16 +1,12 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.2.0 → 1.3.0
-Modified principles: None
-Added sections:
-  - Values: Transparency (AI-assisted development, open process)
-  - Values: Open Source First (tool selection, licensing, community)
+Version change: 1.3.0 → 1.3.1
+Modified sections:
+  - Reference Materials: Added FoundryVTT GitHub Repository (https://github.com/foundryvtt/foundryvtt)
+Added sections: None
 Removed sections: None
-Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ (no changes needed - generic)
-  - .specify/templates/spec-template.md ✅ (no changes needed - generic)
-  - .specify/templates/tasks-template.md ✅ (no changes needed - generic)
+Templates requiring updates: None
 Follow-up TODOs: None
 -->
 
@@ -164,6 +160,12 @@ can cause data loss or system instability.
 **FoundryVTT Knowledge Base**:
 - Main KB: https://foundryvtt.com/kb/
 
+**FoundryVTT GitHub Repository**:
+- Repository: https://github.com/foundryvtt/foundryvtt
+- Issues: Used for issue tracking, bug reports, and feature requests
+- Wiki/Documentation: Source for technical documentation and release notes
+- Reference: Consult for understanding FoundryVTT internals, API documentation, and troubleshooting issues
+
 **FoundryVTT Search Endpoints**:
 - Package Search: `https://foundryvtt.com/search/?type=package&q={SearchString}`
 - Release Notes Search: `https://foundryvtt.com/search/?type=release&q={SearchString}`
@@ -213,4 +215,4 @@ project. All contributions MUST comply with these principles.
 - Violations MUST be resolved before merge or explicitly justified with documented
   rationale in the Complexity Tracking section of the relevant plan
 
-**Version**: 1.3.0 | **Ratified**: 2026-02-15 | **Last Amended**: 2026-02-15
+**Version**: 1.3.1 | **Ratified**: 2026-02-15 | **Last Amended**: 2026-02-15
