@@ -701,7 +701,7 @@ collect_network_status() {
         echo '      "port": "'"$port"'",'
         echo '      "port_listening": "'"$port_listening"'",'
         echo '      "http_status": "'"${http_status:-}"'"'
-        echo '    },'
+        echo '    }'
     else
         echo "============================================================"
         echo "NETWORK"
