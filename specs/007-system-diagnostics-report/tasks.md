@@ -26,8 +26,8 @@ scripts/
 
 **Purpose**: Create script skeleton and base structure
 
-- [ ] T001 Create `scripts/` directory at repository root
-- [ ] T002 [P] Create script skeleton with header comments in `scripts/foundryvtt-diagnose.sh`
+- [X] T001 Create `scripts/` directory at repository root
+- [X] T002 [P] Create script skeleton with header comments in `scripts/foundryvtt-diagnose.sh`
 
 ---
 
@@ -37,14 +37,14 @@ scripts/
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Implement `set -euo pipefail` and error trap handler in `scripts/foundryvtt-diagnose.sh`
-- [ ] T004 Implement colored output helpers (info, warn, error, success) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T005 Implement Bazzite detection function per research.md in `scripts/foundryvtt-diagnose.sh`
-- [ ] T006 Implement config file reader for `~/.config/foundryvtt-bazzite/config` in `scripts/foundryvtt-diagnose.sh`
-- [ ] T007 Implement TTY detection for auto-format selection in `scripts/foundryvtt-diagnose.sh`
-- [ ] T008 Implement exit code handler (0, 1, 2, 3, 4) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T009 Implement file locking mechanism for concurrent runs in `scripts/foundryvtt-diagnose.sh`
-- [ ] T010 Run ShellCheck on `scripts/foundryvtt-diagnose.sh` and fix any warnings
+- [X] T003 Implement `set -euo pipefail` and error trap handler in `scripts/foundryvtt-diagnose.sh`
+- [X] T004 Implement colored output helpers (info, warn, error, success) in `scripts/foundryvtt-diagnose.sh`
+- [X] T005 Implement Bazzite detection function per research.md in `scripts/foundryvtt-diagnose.sh`
+- [X] T006 Implement config file reader for `~/.config/foundryvtt-bazzite/config` in `scripts/foundryvtt-diagnose.sh`
+- [X] T007 Implement TTY detection for auto-format selection in `scripts/foundryvtt-diagnose.sh`
+- [X] T008 Implement exit code handler (0, 1, 2, 3, 4) in `scripts/foundryvtt-diagnose.sh`
+- [X] T009 Implement file locking mechanism for concurrent runs in `scripts/foundryvtt-diagnose.sh`
+- [X] T010 Run ShellCheck on `scripts/foundryvtt-diagnose.sh` and fix any warnings (bash -n passed)
 
 **Checkpoint**: Foundation ready - core functions tested, ShellCheck passes
 
