@@ -33,7 +33,9 @@ Individual sections of the diagnostic report.
 | Section | Contents | Status Indicator |
 |---------|----------|------------------|
 | `host_system` | OS, uptime, resources | Component status |
+| `host_updates` | Available Bazzite updates | Update availability |
 | `containers` | Distrobox container list | Per-container status |
+| `container_updates` | Available Ubuntu packages | Per-container update count |
 | `instances` | FoundryVTT instances | Per-instance status |
 | `network` | Ports, connectivity | Component status |
 | `logs` | Recent log excerpts | Error count |
@@ -65,7 +67,24 @@ Current system resource usage.
 | `disk_percent` | % | >90% | >95% |
 | `load_average` | float | >2.0 | >5.0 |
 
-### 5. Container Status
+### 5. Update Status
+
+**Type**: Data structure
+
+Status of available system updates for host and guest.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `host_updates_available` | boolean | Whether Bazzite host has pending updates |
+| `host_update_info` | string | Description of available updates or error message |
+| `host_check_status` | enum | `available`, `none`, `unknown`, `timeout` |
+| `guest_updates_count` | integer | Number of upgradable packages in container |
+| `guest_security_count` | integer | Number of security updates available |
+| `guest_check_status` | enum | `available`, `none`, `unknown`, `timeout` |
+
+**Update Check Timeout**: 10 seconds maximum for each check to keep report generation fast.
+
+### 7. Container Status
 
 **Type**: Data structure
 
@@ -80,7 +99,7 @@ Status of a Distrobox container.
 | `cpu_percent` | float | Current CPU usage |
 | `memory_usage` | string | Memory usage (e.g., "245MB / 1GB") |
 
-### 6. Instance Status
+### 8. Instance Status
 
 **Type**: Data structure
 
@@ -98,7 +117,7 @@ Status of a FoundryVTT instance.
 | `http_status` | integer | HTTP response code (200=OK) |
 | `error_count` | integer | Number of recent errors in logs |
 
-### 7. Log Entry
+### 9. Log Entry
 
 **Type**: Data structure
 
@@ -160,6 +179,12 @@ Optional output for programmatic processing.
       "memory_percent": 45,
       "disk_percent": 67
     },
+    "host_updates": {
+      "status": "HEALTHY",
+      "updates_available": false,
+      "check_status": "none",
+      "info": "System up to date"
+    },
     "containers": [
       {
         "name": "foundryvtt",
@@ -169,6 +194,14 @@ Optional output for programmatic processing.
         "uptime": "2 days"
       }
     ],
+    "container_updates": {
+      "foundryvtt": {
+        "updates_count": 3,
+        "security_count": 1,
+        "check_status": "available",
+        "status": "WARNING"
+      }
+    },
     "instances": [
       {
         "name": "foundryvtt",

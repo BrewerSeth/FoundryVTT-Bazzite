@@ -231,7 +231,112 @@ RECENT LOGS
 
 ---
 
-## 6. Privacy Redaction
+## 6. System Update Checking
+
+### Decision: Check host updates via `rpm-ostree` and guest updates via `apt`
+
+### Rationale
+
+Both Bazzite (host) and Ubuntu (guest) need periodic updates. Checking for available updates helps users maintain system security and stability.
+
+### Host System (Bazzite) Updates
+
+Bazzite uses rpm-ostree for atomic updates. Check methods:
+
+```bash
+# Check if updates are available (primary method)
+rpm-ostree status --json | jq -r '.deployments[0]."base-checksum"'
+
+# Alternative: Check via ujust (Bazzite's helper)
+ujust update --check 2>/dev/null || echo "Update check unavailable"
+
+# Check last deployment time
+rpm-ostree status | grep "Timestamp"
+```
+
+**Status Determination**:
+- If `rpm-ostree status` shows pending deployment → Updates available
+- If command fails or times out → Cannot check
+- With timeout: 10 seconds max
+
+### Guest Container (Ubuntu) Updates
+
+Ubuntu uses apt. Check from outside the container:
+
+```bash
+# Check for apt updates without entering container
+distobox enter foundryvtt -- sh -c "apt list --upgradable 2>/dev/null | grep -c upgradable" 2>/dev/null || echo "0"
+
+# Get list of upgradable packages (summary)
+distobox enter foundryvtt -- sh -c "apt list --upgradable 2>/dev/null | tail -n +2 | head -5" 2>/dev/null
+```
+
+**Status Determination**:
+- Count of upgradable packages > 0 → Updates available
+- Security updates are priority (check package names for "security")
+- With timeout: 10 seconds max
+
+### Implementation
+
+```bash
+# Check host updates
+check_host_updates() {
+    local updates_available="unknown"
+    local update_info=""
+    
+    # Try rpm-ostree with timeout
+    if timeout 10 rpm-ostree status &>/dev/null; then
+        # Check for pending deployment
+        if rpm-ostree status | grep -q "pending"; then
+            updates_available="yes"
+            update_info="Pending deployment available"
+        else
+            updates_available="no"
+            update_info="System up to date"
+        fi
+    else
+        updates_available="unknown"
+        update_info="Cannot check (rpm-ostree unavailable)"
+    fi
+    
+    echo "Host Updates: $updates_available"
+    echo "Info: $update_info"
+}
+
+# Check guest updates
+check_guest_updates() {
+    local container="$1"
+    local updates_count="unknown"
+    local security_count="0"
+    
+    if timeout 10 distrobox enter "$container" -- sh -c "apt update -qq" &>/dev/null; then
+        updates_count=$(timeout 10 distrobox enter "$container" -- sh -c "apt list --upgradable 2>/dev/null | grep -c upgradable" 2>/dev/null || echo "0")
+        
+        # Check for security updates
+        security_count=$(timeout 10 distrobox enter "$container" -- sh -c "apt list --upgradable 2>/dev/null | grep -i security | wc -l" 2>/dev/null || echo "0")
+    fi
+    
+    echo "Guest Updates: $updates_count packages available"
+    [[ "$security_count" -gt 0 ]] && echo "Security Updates: $security_count"
+}
+```
+
+### Timeout Handling
+
+Update checks can hang if:
+- System is offline
+- Package manager is locked
+- Network is slow
+
+Use `timeout` command (10 seconds) to keep report generation fast:
+```bash
+timeout 10 rpm-ostree status
+timeout 10 distrobox enter foundryvtt -- apt list --upgradable
+```
+
+---
+
+## 7. Privacy Redaction
 
 ### Decision: Pattern-based replacement with placeholder tokens
 
@@ -277,6 +382,8 @@ redact_sensitive_info() {
 | Container status | `distrobox list` + `podman inspect` | Native tools, detailed info |
 | Instance status | `systemctl --user` + `journalctl` | Standard service management |
 | Network status | `ss` + `curl` | Lightweight, no external deps |
+| Host updates | `rpm-ostree status` with timeout | Bazzite standard, atomic updates |
+| Guest updates | `apt list --upgradable` with timeout | Ubuntu standard, security focus |
 | Report format | Structured text with sections | Human + AI readable |
 | Privacy | Pattern-based redaction | Safe sharing, preserves value |
 

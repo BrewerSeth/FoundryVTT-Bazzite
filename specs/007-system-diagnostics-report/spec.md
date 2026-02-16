@@ -79,6 +79,15 @@ A user needs help troubleshooting and wants to share their diagnostics report wi
 - What happens when multiple FoundryVTT instances exist (feature 005)?
   - The report includes status for all configured instances.
 
+- What happens when the host system cannot check for updates (offline or broken rpm-ostree)?
+  - The report indicates update check failed and suggests manual check with `ujust update --check`.
+
+- What happens when the guest container cannot check for updates (offline or broken apt)?
+  - The report indicates update check failed and suggests entering the container and running `apt update`.
+
+- What happens when update checks take too long?
+  - The script implements a 10-second timeout for update checks to keep the report generation fast.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -110,6 +119,14 @@ A user needs help troubleshooting and wants to share their diagnostics report wi
 - **FR-013**: The script MUST include timestamps for when the report was generated and when data was collected.
 
 - **FR-014**: The script MUST complete the quick check within 5 seconds; full report within 30 seconds.
+
+- **FR-015**: The script MUST report available system updates for the host (Bazzite) using `rpm-ostree status` and `ujust update --check`.
+
+- **FR-016**: The script MUST report available package updates for the guest Distrobox container using `apt list --upgradable`.
+
+- **FR-017**: The script SHOULD warn users if the host system has pending updates that may affect FoundryVTT operation.
+
+- **FR-018**: The script SHOULD warn users if the guest container has security updates available.
 
 ### Key Entities
 
