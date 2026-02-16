@@ -116,11 +116,13 @@ A user needs help troubleshooting and wants to share their diagnostics report wi
 
 - **FR-006**: The script MUST report recent errors or warnings from FoundryVTT logs.
 
-- **FR-007**: The script MUST provide a quick summary mode showing pass/fail for major components.
+- **FR-007**: The script MUST provide a quick summary mode showing pass/fail for major components. Quick mode skips: data directory size calculation, detailed configuration analysis, largest files listing, and FoundryVTT version check against website.
+
+- **FR-023**: The script MUST return appropriate exit codes: 0 (healthy), 2 (degraded/warnings), 3 (critical/errors), 4 (FoundryVTT not installed), 1 (script error).
 
 - **FR-008**: The script MUST provide a detailed report mode with comprehensive diagnostic information.
 
-- **FR-009**: The script MUST format output for both human readability and AI assistant parsing (structured, labeled sections).
+- **FR-009**: The script MUST format output for both human readability and AI assistant parsing (structured, labeled sections). Output format auto-detects: colored text for TTY (interactive), JSON for non-TTY (piped/redirected).
 
 - **FR-010**: The script MUST support saving the report to a file.
 
@@ -178,6 +180,16 @@ A user needs help troubleshooting and wants to share their diagnostics report wi
 
 - **SC-006**: The report format remains consistent across runs, enabling comparison of system state over time.
 
+## Clarifications
+
+### Session 2026-02-15
+
+- **Q**: Should concurrent script runs be allowed when writing to files? → **A**: Allow concurrent runs with file-based locking (`/tmp/foundryvtt-diagnose.lock`) to prevent interleaved output corruption.
+
+- **Q**: What exit codes should the script use for different health states? → **A**: Exit codes: 0=healthy, 2=degraded (warnings), 3=critical (errors), 4=not installed, 1=script error. This enables automation and monitoring integration.
+
+- **Q**: What should the default output format be (text vs JSON)? → **A**: Auto-detect: Use colored text format when stdout is a TTY (interactive terminal), JSON format when stdout is piped or redirected (non-TTY). User can override with --json or --no-color flags.
+
 ## Assumptions
 
 - The diagnostics script can access necessary system information without requiring elevated privileges (or gracefully handles restricted access).
@@ -187,3 +199,4 @@ A user needs help troubleshooting and wants to share their diagnostics report wi
 - Resource thresholds for critical: CPU >95%, Memory >95%, Disk >95%.
 - Privacy redaction replaces sensitive values with placeholder tokens (e.g., `[REDACTED_IP]`, `[REDACTED_PATH]`).
 - The report includes version numbers of FoundryVTT-Bazzite scripts for support context.
+- Concurrent script executions use file-based locking to prevent output corruption when writing to files.
