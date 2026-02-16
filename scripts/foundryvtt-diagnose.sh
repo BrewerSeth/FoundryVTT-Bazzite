@@ -86,7 +86,7 @@ cleanup_on_exit() {
     fi
     
     # Return the original exit code
-    exit ${exit_code}
+    exit "${exit_code}"
 }
 
 handle_interrupt() {
@@ -181,7 +181,8 @@ check_bazzite() {
 require_bazzite() {
     if ! check_bazzite; then
         error "This script requires Bazzite Linux."
-        local detected_os=$(grep "^ID=" /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
+        local detected_os
+        detected_os=$(grep "^ID=" /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
         error "Detected OS: ${detected_os:-unknown}"
         error "Get Bazzite at: https://bazzite.gg"
         exit ${EXIT_ERROR}
@@ -198,6 +199,7 @@ read_config() {
     fi
     
     # Source the config file safely
+    # shellcheck source=/dev/null
     set -a
     source "${CONFIG_FILE}" 2>/dev/null || true
     set +a
@@ -317,7 +319,7 @@ parse_arguments() {
                     shift 2
                 else
                     error "--output requires a filename"
-                    exit ${EXIT_ERROR}
+                    exit "${EXIT_ERROR}"
                 fi
                 ;;
             --help|-h)
@@ -447,7 +449,7 @@ main() {
     end_report
     
     # Return appropriate exit code
-    exit $(get_exit_code)
+    exit "$(get_exit_code)"
 }
 
 # Run main function
