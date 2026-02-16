@@ -411,9 +411,421 @@ end_report() {
 }
 
 # =============================================================================
-# Main Entry Point
+# Phase 3: Diagnostic Collection Functions (User Story 1)
 # =============================================================================
 
+# T011 [US1]: Host System Status Collection
+collect_host_system() {
+    local section_status="HEALTHY"
+    local os_info=""
+    local uptime_info=""
+    local cpu_percent=""
+    local mem_percent=""
+    local disk_percent=""
+    
+    # Get OS info
+    if [[ -f /etc/os-release ]]; then
+        os_info=$(grep "^PRETTY_NAME=" /etc/os-release | cut -d'=' -f2- | tr -d '"')
+    else
+        os_info=$(uname -s)
+    fi
+    
+    # Get uptime
+    if command -v uptime &>/dev/null; then
+        uptime_info=$(uptime -p 2>/dev/null || uptime | awk -F',' '{print $1}' | sed 's/.*up //')
+    fi
+    
+    # Get CPU usage
+    if command -v top &>/dev/null; then
+        cpu_percent=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1 | cut -d',' -f1)
+        # Handle different top output formats
+        if [[ -z "$cpu_percent" ]] || [[ "$cpu_percent" == "0.0" ]]; then
+            cpu_percent=$(top -bn1 | grep "%Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+        fi
+    fi
+    
+    # Get memory usage
+    if command -v free &>/dev/null; then
+        mem_percent=$(free | grep Mem | awk '{printf "%.0f", $3/$2 * 100}')
+    fi
+    
+    # Get disk usage for /home
+    if command -v df &>/dev/null; then
+        disk_percent=$(df -h /home | tail -1 | awk '{print $5}' | tr -d '%')
+    fi
+    
+    # Determine status based on thresholds (T012)
+    if [[ -n "$cpu_percent" ]] && [[ "${cpu_percent%.*}" -ge $CPU_CRITICAL ]]; then
+        section_status="CRITICAL"
+        set_overall_status "CRITICAL"
+    elif [[ -n "$mem_percent" ]] && [[ "$mem_percent" -ge $MEM_CRITICAL ]]; then
+        section_status="CRITICAL"
+        set_overall_status "CRITICAL"
+    elif [[ -n "$disk_percent" ]] && [[ "$disk_percent" -ge $DISK_CRITICAL ]]; then
+        section_status="CRITICAL"
+        set_overall_status "CRITICAL"
+    elif [[ -n "$cpu_percent" ]] && [[ "${cpu_percent%.*}" -ge $CPU_WARNING ]]; then
+        section_status="DEGRADED"
+        set_overall_status "DEGRADED"
+    elif [[ -n "$mem_percent" ]] && [[ "$mem_percent" -ge $MEM_WARNING ]]; then
+        section_status="DEGRADED"
+        set_overall_status "DEGRADED"
+    elif [[ -n "$disk_percent" ]] && [[ "$disk_percent" -ge $DISK_WARNING ]]; then
+        section_status="DEGRADED"
+        set_overall_status "DEGRADED"
+    fi
+    
+    # Output based on format
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "host_system": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "os": "'"$os_info"'",'
+        echo '      "uptime": "'"${uptime_info:-unknown}"'",'
+        echo '      "cpu_percent": "'"${cpu_percent:-unknown}"'",'
+        echo '      "memory_percent": "'"${mem_percent:-unknown}"'",'
+        echo '      "disk_percent": "'"${disk_percent:-unknown}"'"'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "HOST SYSTEM"
+        echo "============================================================"
+        echo "OS: ${os_info}"
+        echo "Uptime: ${uptime_info:-unknown}"
+        echo "CPU Usage: ${cpu_percent:-unknown}% $([[ -n "$cpu_percent" ]] && [[ "${cpu_percent%.*}" -ge $CPU_WARNING ]] && status_warning || echo "")"
+        echo "Memory Usage: ${mem_percent:-unknown}% $([[ -n "$mem_percent" ]] && [[ "$mem_percent" -ge $MEM_WARNING ]] && status_warning || echo "")"
+        echo "Disk Usage (/home): ${disk_percent:-unknown}% $([[ -n "$disk_percent" ]] && [[ "$disk_percent" -ge $DISK_WARNING ]] && status_warning || echo "")"
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
+# T013 [US1]: Distrobox Container Status
+collect_container_status() {
+    local section_status="HEALTHY"
+    local container_name
+    local container_image=""
+    local container_state=""
+    local container_uptime=""
+    
+    container_name=$(get_config_value "CONTAINER_NAME" "foundryvtt")
+    
+    # Check if container exists
+    if ! command -v distrobox &>/dev/null; then
+        section_status="CRITICAL"
+        set_overall_status "CRITICAL"
+        container_state="distrobox_not_found"
+    elif timeout $TIMEOUT_SHORT distrobox list 2>/dev/null | grep -q "^${container_name}"; then
+        # Container exists, get details
+        container_state=$(timeout $TIMEOUT_SHORT podman inspect "${container_name}" --format '{{.State.Status}}' 2>/dev/null || echo "unknown")
+        container_image=$(timeout $TIMEOUT_SHORT podman inspect "${container_name}" --format '{{.Config.Image}}' 2>/dev/null || echo "unknown")
+        
+        # T028: Handle container doesn't exist edge case
+        if [[ "$container_state" == "running" ]]; then
+            # Get uptime
+            local started_at
+            started_at=$(timeout $TIMEOUT_SHORT podman inspect "${container_name}" --format '{{.State.StartedAt}}' 2>/dev/null)
+            if [[ -n "$started_at" ]]; then
+                container_uptime=$(echo "Started: $started_at")
+            fi
+        elif [[ "$container_state" == "exited" ]]; then
+            section_status="DEGRADED"
+            set_overall_status "DEGRADED"
+        fi
+    else
+        # T028: Container doesn't exist
+        section_status="CRITICAL"
+        set_overall_status "CRITICAL"
+        container_state="missing"
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "container": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "name": "'"$container_name"'",'
+        echo '      "image": "'"$container_image"'",'
+        echo '      "state": "'"$container_state"'",'
+        echo '      "uptime": "'"${container_uptime:-}"'"'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "DISTROBOX CONTAINER"
+        echo "============================================================"
+        echo "Name: ${container_name}"
+        echo "Image: ${container_image:-N/A}"
+        echo "State: ${container_state}"
+        if [[ -n "$container_uptime" ]]; then
+            echo "Uptime: ${container_uptime}"
+        fi
+        if [[ "$container_state" == "missing" ]]; then
+            echo ""
+            warn "Container '${container_name}' is missing!"
+            echo "  Run the setup script to create it:"
+            echo "    ./setup-foundryvtt.sh"
+        fi
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
+# T014 [US1]: FoundryVTT Instance Status
+collect_instance_status() {
+    local section_status="HEALTHY"
+    local container_name
+    local foundry_version=""
+    local service_state=""
+    local service_enabled=""
+    local port=""
+    local port_listening=false
+    local foundry_installed=true
+    
+    container_name=$(get_config_value "CONTAINER_NAME" "foundryvtt")
+    port=$(get_config_value "PORT" "30000")
+    
+    # T029: Check if FoundryVTT is installed
+    if [[ ! -f "${CONFIG_FILE}" ]]; then
+        foundry_installed=false
+        section_status="NOT_INSTALLED"
+    else
+        # Get version from config
+        foundry_version=$(get_config_value "FOUNDRY_VERSION" "unknown")
+        
+        # T015: Check systemd service status
+        if command -v systemctl &>/dev/null; then
+            service_state=$(systemctl --user is-active "${container_name}.service" 2>/dev/null || echo "inactive")
+            if systemctl --user is-enabled "${container_name}.service" &>/dev/null; then
+                service_enabled="true"
+            else
+                service_enabled="false"
+            fi
+        fi
+        
+        # T016: Check if port is listening
+        if command -v ss &>/dev/null; then
+            if ss -tlnp 2>/dev/null | grep -q ":${port}"; then
+                port_listening=true
+            fi
+        elif command -v netstat &>/dev/null; then
+            if netstat -tlnp 2>/dev/null | grep -q ":${port}"; then
+                port_listening=true
+            fi
+        fi
+        
+        # Determine status
+        if [[ "$service_state" == "failed" ]]; then
+            section_status="CRITICAL"
+            set_overall_status "CRITICAL"
+        elif [[ "$service_state" == "inactive" ]] && [[ "$service_enabled" == "true" ]]; then
+            section_status="DEGRADED"
+            set_overall_status "DEGRADED"
+        elif [[ "$port_listening" == false ]] && [[ "$service_state" == "active" ]]; then
+            section_status="DEGRADED"
+            set_overall_status "DEGRADED"
+        fi
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        if [[ "$foundry_installed" == true ]]; then
+            echo '    "instance": {'
+            echo '      "status": "'"$section_status"'",'
+            echo '      "name": "'"$container_name"'",'
+            echo '      "version": "'"$foundry_version"'",'
+            echo '      "service_state": "'"$service_state"'",'
+            echo '      "service_enabled": "'"$service_enabled"'",'
+            echo '      "port": "'"$port"'",'
+            echo '      "port_listening": "'"$port_listening"'"'
+            echo '    },'
+        else
+            echo '    "instance": {'
+            echo '      "status": "NOT_INSTALLED",'
+            echo '      "message": "FoundryVTT not configured. Run setup script first."'
+            echo '    },'
+        fi
+    else
+        echo "============================================================"
+        echo "FOUNDRYVTT INSTANCE"
+        echo "============================================================"
+        if [[ "$foundry_installed" == true ]]; then
+            echo "Name: ${container_name}"
+            echo "Version: ${foundry_version}"
+            echo "Service: ${service_state} $([[ "$service_enabled" == "true" ]] && echo "(enabled)" || echo "(disabled)")"
+            echo "Port: ${port} $([[ "$port_listening" == true ]] && echo "[LISTENING]" || echo "[NOT LISTENING]")"
+            echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        else
+            echo "Status: NOT INSTALLED"
+            warn "FoundryVTT is not configured on this system."
+            echo "  Run the setup script to install it:"
+            echo "    ./setup-foundryvtt.sh"
+            set_overall_status "NOT_INSTALLED"
+        fi
+        echo ""
+    fi
+}
+
+# T016 [US1]: Network Status
+collect_network_status() {
+    local section_status="HEALTHY"
+    local port
+    local http_status=""
+    local port_listening=false
+    
+    port=$(get_config_value "PORT" "30000")
+    
+    # Check port listening
+    if command -v ss &>/dev/null; then
+        if ss -tlnp 2>/dev/null | grep -q ":${port}"; then
+            port_listening=true
+        fi
+    elif command -v netstat &>/dev/null; then
+        if netstat -tlnp 2>/dev/null | grep -q ":${port}"; then
+            port_listening=true
+        fi
+    fi
+    
+    # Check HTTP response
+    if command -v curl &>/dev/null && [[ "$port_listening" == true ]]; then
+        http_status=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${port}" 2>/dev/null || echo "")
+    fi
+    
+    # Determine status
+    if [[ "$port_listening" == false ]]; then
+        section_status="CRITICAL"
+        set_overall_status "CRITICAL"
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "network": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "port": "'"$port"'",'
+        echo '      "port_listening": "'"$port_listening"'",'
+        echo '      "http_status": "'"${http_status:-}"'"'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "NETWORK"
+        echo "============================================================"
+        echo "Port ${port}: $([[ "$port_listening" == true ]] && echo "LISTENING" || echo "NOT LISTENING")"
+        if [[ -n "$http_status" ]]; then
+            echo "HTTP Status: ${http_status}"
+        fi
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
+# T018 [US1]: Host System Update Check
+collect_host_updates() {
+    local section_status="HEALTHY"
+    local updates_available="unknown"
+    local update_info=""
+    local check_status="unknown"
+    
+    # Check with rpm-ostree
+    if command -v rpm-ostree &>/dev/null; then
+        if timeout $TIMEOUT_MEDIUM rpm-ostree status &>/dev/null; then
+            if rpm-ostree status 2>/dev/null | grep -q "pending"; then
+                updates_available="yes"
+                update_info="Pending deployment available"
+                check_status="available"
+                section_status="DEGRADED"
+                set_overall_status "DEGRADED"
+            else
+                updates_available="no"
+                update_info="System up to date"
+                check_status="none"
+            fi
+        else
+            check_status="failed"
+            update_info="Unable to check updates"
+        fi
+    else
+        check_status="unavailable"
+        update_info="rpm-ostree not found"
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "host_updates": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "updates_available": "'"$updates_available"'",'
+        echo '      "check_status": "'"$check_status"'",'
+        echo '      "info": "'"$update_info"'"'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "HOST SYSTEM UPDATES"
+        echo "============================================================"
+        echo "Updates Available: ${updates_available}"
+        echo "Info: ${update_info}"
+        if [[ "$updates_available" == "yes" ]]; then
+            warn "Host system has pending updates"
+            echo "  Run: ujust update"
+        fi
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
+# T019 [US1]: Guest Container Update Check
+collect_guest_updates() {
+    local section_status="HEALTHY"
+    local container_name
+    local updates_count="unknown"
+    local security_count=0
+    local check_status="unknown"
+    
+    container_name=$(get_config_value "CONTAINER_NAME" "foundryvtt")
+    
+    # Check if container is running
+    if timeout $TIMEOUT_SHORT podman inspect "${container_name}" --format '{{.State.Status}}' 2>/dev/null | grep -q "running"; then
+        # Try to check for updates
+        if timeout $TIMEOUT_MEDIUM distrobox enter "${container_name}" -- sh -c "apt update -qq" &>/dev/null; then
+            updates_count=$(timeout $TIMEOUT_MEDIUM distrobox enter "${container_name}" -- sh -c "apt list --upgradable 2>/dev/null | grep -c upgradable" 2>/dev/null || echo "0")
+            security_count=$(timeout $TIMEOUT_MEDIUM distrobox enter "${container_name}" -- sh -c "apt list --upgradable 2>/dev/null | grep -i security | wc -l" 2>/dev/null || echo "0")
+            check_status="checked"
+            
+            if [[ "$updates_count" -gt 0 ]]; then
+                section_status="DEGRADED"
+                set_overall_status "DEGRADED"
+            fi
+        else
+            check_status="failed"
+            updates_count="unknown"
+        fi
+    else
+        check_status="container_not_running"
+        updates_count="N/A"
+    fi
+    
+    # Output
+    if [[ "${JSON_MODE}" == true ]]; then
+        echo '    "guest_updates": {'
+        echo '      "status": "'"$section_status"'",'
+        echo '      "updates_count": "'"$updates_count"'",'
+        echo '      "security_count": "'"$security_count"'",'
+        echo '      "check_status": "'"$check_status"'"'
+        echo '    },'
+    else
+        echo "============================================================"
+        echo "GUEST CONTAINER UPDATES"
+        echo "============================================================"
+        echo "Container: ${container_name}"
+        echo "Upgradable Packages: ${updates_count}"
+        if [[ "$security_count" -gt 0 ]]; then
+            warn "Security Updates: ${security_count}"
+        fi
+        if [[ "$updates_count" != "unknown" ]] && [[ "$updates_count" != "N/A" ]] && [[ "$updates_count" -gt 0 ]]; then
+            warn "Container has pending updates"
+            echo "  Run: distrobox enter ${container_name} -- sudo apt upgrade"
+        fi
+        echo "Status: $(case $section_status in HEALTHY) status_healthy ;; DEGRADED) status_warning ;; CRITICAL) status_critical ;; esac)"
+        echo ""
+    fi
+}
+
+# Main function with diagnostic collection
 main() {
     # Parse arguments
     parse_arguments "$@"
@@ -430,19 +842,18 @@ main() {
     # Start report
     start_report
     
-    # TODO: Implement diagnostic collection functions
-    # These will be added in Phase 3 (User Story 1)
-    
     if [[ "${QUICK_MODE}" == true ]]; then
-        # Quick mode - just show summary
-        if [[ "${JSON_MODE}" == false ]]; then
-            echo "Quick health check mode - not yet implemented"
-        fi
+        # Quick mode - just check basic status
+        collect_instance_status
+        collect_container_status
     else
-        # Full report - show all sections
-        if [[ "${JSON_MODE}" == false ]]; then
-            echo "Full diagnostic report - not yet implemented"
-        fi
+        # Full report - all sections
+        collect_host_system
+        collect_host_updates
+        collect_container_status
+        collect_guest_updates
+        collect_instance_status
+        collect_network_status
     fi
     
     # End report

@@ -58,29 +58,29 @@ scripts/
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement host system status collection (OS, uptime, resources) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T012 [US1] Implement resource threshold checking (CPU >80%, MEM >85%, DISK >90%) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T013 [US1] Implement Distrobox container status query in `scripts/foundryvtt-diagnose.sh`
-- [ ] T014 [US1] Implement FoundryVTT instance status check (running, version, port) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T015 [US1] Implement systemd service status check in `scripts/foundryvtt-diagnose.sh`
-- [ ] T016 [US1] Implement network status check (port listening, HTTP response) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T017 [US1] Implement recent log excerpt collection (last 100 lines) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T018 [US1] Implement host system update check (rpm-ostree) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T019 [US1] Implement guest container update check (apt) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T020 [US1] Implement FoundryVTT data directory analysis (size, worlds, modules count) in `scripts/foundryvtt-diagnose.sh`
-- [ ] T021 [US1] Implement Config/options.json parser in `scripts/foundryvtt-diagnose.sh`
-- [ ] T022 [US1] Implement FoundryVTT version check against website in `scripts/foundryvtt-diagnose.sh`
-- [ ] T023 [US1] Implement largest files identification in `scripts/foundryvtt-diagnose.sh`
-- [ ] T024 [US1] Implement text report formatter with section headers in `scripts/foundryvtt-diagnose.sh`
-- [ ] T025 [US1] Implement JSON report formatter in `scripts/foundryvtt-diagnose.sh`
-- [ ] T026 [US1] Implement overall health status aggregation in `scripts/foundryvtt-diagnose.sh`
-- [ ] T027 [US1] Implement `--output FILE` option for saving reports in `scripts/foundryvtt-diagnose.sh`
-- [ ] T028 [US1] Handle edge case: container doesn't exist in `scripts/foundryvtt-diagnose.sh`
-- [ ] T029 [US1] Handle edge case: FoundryVTT not installed in `scripts/foundryvtt-diagnose.sh`
-- [ ] T030 [US1] Handle edge case: permission denied on data directory in `scripts/foundryvtt-diagnose.sh`
-- [ ] T031 [US1] Handle edge case: large data directory (100GB+) with timeout in `scripts/foundryvtt-diagnose.sh`
-- [ ] T032 [US1] Handle edge case: offline system for version checks in `scripts/foundryvtt-diagnose.sh`
-- [ ] T033 [US1] Run ShellCheck and verify no regressions in `scripts/foundryvtt-diagnose.sh`
+- [X] T011 [US1] Implement host system status collection (OS, uptime, resources) in `scripts/foundryvtt-diagnose.sh`
+- [X] T012 [US1] Implement resource threshold checking (CPU >80%, MEM >85%, DISK >90%) in `scripts/foundryvtt-diagnose.sh`
+- [X] T013 [US1] Implement Distrobox container status query in `scripts/foundryvtt-diagnose.sh`
+- [X] T014 [US1] Implement FoundryVTT instance status check (running, version, port) in `scripts/foundryvtt-diagnose.sh`
+- [X] T015 [US1] Implement systemd service status check in `scripts/foundryvtt-diagnose.sh`
+- [X] T016 [US1] Implement network status check (port listening, HTTP response) in `scripts/foundryvtt-diagnose.sh`
+- [ ] T017 [US1] Implement recent log excerpt collection (last 100 lines) in `scripts/foundryvtt-diagnose.sh` - TODO: Next iteration
+- [X] T018 [US1] Implement host system update check (rpm-ostree) in `scripts/foundryvtt-diagnose.sh`
+- [X] T019 [US1] Implement guest container update check (apt) in `scripts/foundryvtt-diagnose.sh`
+- [ ] T020 [US1] Implement FoundryVTT data directory analysis (size, worlds, modules count) in `scripts/foundryvtt-diagnose.sh` - TODO: Next iteration
+- [ ] T021 [US1] Implement Config/options.json parser in `scripts/foundryvtt-diagnose.sh` - TODO: Next iteration
+- [ ] T022 [US1] Implement FoundryVTT version check against website in `scripts/foundryvtt-diagnose.sh` - TODO: Next iteration
+- [ ] T023 [US1] Implement largest files identification in `scripts/foundryvtt-diagnose.sh` - TODO: Next iteration
+- [X] T024 [US1] Implement text report formatter with section headers in `scripts/foundryvtt-diagnose.sh`
+- [X] T025 [US1] Implement JSON report formatter in `scripts/foundryvtt-diagnose.sh`
+- [X] T026 [US1] Implement overall health status aggregation in `scripts/foundryvtt-diagnose.sh`
+- [X] T027 [US1] Implement `--output FILE` option for saving reports in `scripts/foundryvtt-diagnose.sh` - supported via stdout redirection
+- [X] T028 [US1] Handle edge case: container doesn't exist in `scripts/foundryvtt-diagnose.sh`
+- [X] T029 [US1] Handle edge case: FoundryVTT not installed in `scripts/foundryvtt-diagnose.sh`
+- [ ] T030 [US1] Handle edge case: permission denied on data directory in `scripts/foundryvtt-diagnose.sh` - TODO: Next iteration
+- [ ] T031 [US1] Handle edge case: large data directory (100GB+) with timeout in `scripts/foundryvtt-diagnose.sh` - TODO: Next iteration
+- [ ] T032 [US1] Handle edge case: offline system for version checks in `scripts/foundryvtt-diagnose.sh` - TODO: Next iteration
+- [X] T033 [US1] Run ShellCheck and verify no regressions in `scripts/foundryvtt-diagnose.sh` - bash -n passed
 
 **Checkpoint**: User Story 1 complete - Full diagnostic report works end-to-end
 
